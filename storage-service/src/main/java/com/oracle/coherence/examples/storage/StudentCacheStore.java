@@ -5,6 +5,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 
 import javax.sql.DataSource;
@@ -112,6 +116,54 @@ public class StudentCacheStore
         }
         catch (SQLException e) {
             throw Exceptions.ensureRuntimeException(e);
+        }
+    }
+
+    @Override
+    public Map<StudentId, Student> loadAll(Collection<? extends StudentId> colKeys) {
+        Map<StudentId, Student> map = new HashMap<>();
+        for (StudentId key : colKeys) {
+            Student value = load(key);
+            if (value != null) {
+                map.put(key, value);
+            }
+        }
+        return map;
+    }
+
+    @Override
+    public void eraseAll(Collection<? extends StudentId> colKeys) {
+        boolean fRemove = true;
+
+        for (Iterator<? extends StudentId> iter = colKeys.iterator(); iter.hasNext(); ) {
+            erase(iter.next());
+            if (fRemove) {
+                try {
+                    iter.remove();
+                }
+                catch (UnsupportedOperationException e) {
+                    fRemove = false;
+                }
+            }
+        }
+    }
+
+    @Override
+    public void storeAll(Map<? extends StudentId, ? extends Student> mapEntries) {
+        boolean fRemove = true;
+
+        for (Iterator<? extends Map.Entry<? extends StudentId, ? extends Student>> iter = mapEntries.entrySet().iterator();
+                iter.hasNext(); ) {
+            Map.Entry<? extends StudentId, ? extends Student> entry = iter.next();
+            store(entry.getKey(), entry.getValue());
+            if (fRemove) {
+                try {
+                    iter.remove();
+                }
+                catch (UnsupportedOperationException e) {
+                    fRemove = false;
+                }
+            }
         }
     }
 
