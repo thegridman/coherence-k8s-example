@@ -5,14 +5,20 @@ metadata:
 spec:
   annotations:
     openshift.io/scc: anyuid
-  image: coherence-example-storage:1.0.0-SNAPSHOT
-  jvm:
-    args:
-      - -Doracle.db.host=oracledb.oracle.svc
-      - -Doracle.db.port=1521
-      - -Doracle.db.sid=ORCLPDB1
-      - -Doracle.db.user=College
-      - -Doracle.db.pwd=Coherence2020
+  image: storage-service:1.0.0-SNAPSHOT
+  application:
+    type: spring
+  env:
+  - name: ORACLE_DB_HOST
+    value: oracledb.oracle.svc
+  - name: ORACLE_DB_PORT
+    value: 1521
+  - name: ORACLE_DB_SID
+    value: ORCLPDB1
+  - name: ORACLE_DB_USER
+    value: College
+  - name: ORACLE_DB_PASSWORD
+    value: Coherence2020
   coherence:
     metrics:
       enabled: true

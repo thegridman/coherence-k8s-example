@@ -11,14 +11,10 @@ Each module may have a different development and deployment lifecycle.
 These classes have been annotated with Coherence POF annotations. During the build the POF Maven plugin will instrument
 the classes to make the properly implement evolvable portable objects.
 The classes have also been annotated with JPA annotations so that they can be stored in a database.
-This module is used by the other modules that require these domain classes.
+This module will be used by the other modules that require these domain classes.
 
 * Storage Service `storage-service` directory. This is the Coherence storage enabled cluster service.
-This module provides caches using `CacheStore` implementations to read from and write to the database.
-The cache stores use plain jdbc code to access the database.
-
-* Spring Boot Storage Service `spring-boot-storage-service` directory. This module provides the same functionality as
-the Storage Service but has been written as a Spring Boot application that uses JPA in the Cache Stores.
+This module is a Spring Boot application that uses Spring JPA to implament a simple Coherence `CacheStore`.
 
 * Student REST Service `rest-service` directory. This is a Spring Boot REST application that provides REST endpoints
 to perform CRUD operations on Students. This application is a Coherence Extend client application that connects
@@ -36,17 +32,16 @@ Domain Classes
 ----
 
 Storage Service
+This is a Spring Boot application so needs the addition of `spring-boot:build-image` to get the Spring Boot plugin to
+build the image.
 [source,bash]
 ----
-./mvnw clean install -DskipTests -f storage-service/
+./mvnw clean install spring-boot:build-image -DskipTests -f storage-service/
 ----
 
-Spring Boot Storage Service
-----
-./mvnw clean install -DskipTests -f spring-boot-storage-service/
-----
-
-REST Service
+REST Microservice
+This is a Spring Boot application so needs the addition of `spring-boot:build-image` to get the Spring Boot plugin to
+build the image.
 ----
 ./mvnw clean install spring-boot:build-image -DskipTests -f rest-service/
 ----
@@ -59,11 +54,11 @@ One way to do this for testing is use the Oracle DB Docker image on Oracle Conta
 start and throw away afterward.
 
 The following database details will be required:
-* The host name to use to connect to the database
-* The port to use to connect to the database
+* The host name to be used to connect to the database
+* The port to be used to connect to the database
 * The database SID
-* The user name to use to connect to the database
-* The password to use to connect to the database
+* The user name to be used to connect to the database
+* The password to be used to connect to the database
 
 The user must have tables in schema like the ones below:
 
@@ -107,18 +102,7 @@ First start the Coherence storage application.
 Choose whether you want to run the plain JDBC storage application or the Spring Boot storage application,
 ONLY RUN ONE OF THEM.
 
-==== Run the JDBC Storage Application
-
-Run the command below after changing the System properties `oracle.db.host`, `oracle.db.port`, `oracle.db.sid`,
-`oracle.db.user`, `oracle.db.pwd` to match with the values required for your database.
-
-[Source,bash]
-----
-docker run -d -p 20000:20000 \
-    -e JAVA_TOOL_OPTIONS='-Doracle.db.host=192.168.1.33 -Doracle.db.port=31521 -Doracle.db.sid=ORCLPDB1 -Doracle.db.user=College -Doracle.db.pwd=Coherence2020' \
-    --name storage coherence-example-storage:1.0.0-SNAPSHOT
-----
-
+==== Run the Coherence Storage Application
 
 Run the command below after changing the environment variables to the values required for your database.
 
@@ -132,10 +116,9 @@ docker run -it --rm -p 20000:20000 \
     --name storage coherence-example-spring-storage:1.0.0-SNAPSHOT
 ----
 
+=== Run the REST Microservice
 
-=== Run the REST Service
-
-Now run the Spring Boot REST Service. This is a Coherence Extend client application that will connect to the storage application.
+Now run the Spring Boot REST microservice. This is a Coherence Extend client application that will connect to the storage application.
 When we started the storage application we exposed the Coherence Extend port 20000 to port 20000 on the host.
 We can configure the REST service to connect to Extend on the local machines IP address.
 
@@ -238,11 +221,13 @@ Again, a simple solution is to run the Oracle DB image in k8s.
 
 As before there are two choices for storage, the plain JDBC storage or the Spring Boot JPA storage, CHOOSE ONLY ONE.
 
-First make sure the Coherence Operator is installed, as this will be required to run the storage cluster.
+First make sure the Coherence Operator has been installed, as this will be required to run the storage cluster.
 
-==== Start the JDBC Storage Cluster
+NOTE: The operator must be at least version 3.1.0 to support Spring Boot Buildpacks images.
 
-The following yaml can be used to create a storage cluster using the image built from this project.
+==== Start the Coherence Storage Cluster
+
+The following yaml can be used to create the Spring Boot storage cluster using the image built from this project.
 [Source,yaml]
 .k8s/storage-cluster.yaml
 ----
@@ -253,51 +238,9 @@ metadata:
 spec:
   annotations:
     openshift.io/scc: anyuid
-  image: coherence-example-storage:1.0.0-SNAPSHOT
-  jvm:
-    args:
-      - -Doracle.db.host=oracledb.oracle.svc
-      - -Doracle.db.port=1521
-      - -Doracle.db.sid=ORCLPDB1
-      - -Doracle.db.user=College
-      - -Doracle.db.pwd=Coherence2020
-  coherence:
-    metrics:
-      enabled: true
-    management:
-      enabled: true
-  ports:
-    - name: metrics
-      port: 9612
-      serviceMonitor:
-        enabled: true
-    - name: management
-      port: 30000
-    - name: extend
-      port: 20000
-----
-
-The yaml above is in the ./k8s/storage-cluster.yaml[] file.
-Create the storage cluster with the following command:
-[Source,bash]
-----
-kubectl create -f ./k8s/storage-cluster.yaml
-----
-
-==== Start the Spring Boot Storage Cluster
-
-The following yaml can be used to create the Spring Boot storage cluster using the image built from this project.
-[Source,yaml]
-.k8s/spring-storage-cluster.yaml
-----
-apiVersion: coherence.oracle.com/v1
-kind: Coherence
-metadata:
-  name: student-storage
-spec:
-  annotations:
-    openshift.io/scc: anyuid
-  image: coherence-example-spring-storage:1.0.0-SNAPSHOT
+  image: storage-service:1.0.0-SNAPSHOT  # <1>
+  application:
+    type: spring                         # <2>
   env:
   - name: ORACLE_DB_HOST
     value: oracledb.oracle.svc
@@ -328,16 +271,25 @@ spec:
     periodSeconds: 10
 ----
 
-The yaml above is in the ./k8s/spring-storage-cluster.yaml[] file.
+<1> The application image built by the Spring Boot plugin has been specified as the image name
+<2> It is important tell the Coherence Operator that the application is a Spring Boot application by setting
+the `spec.application.type` field to `spring`.
+
+
+The yaml above is in the ./k8s/storage-cluster.yaml file.
 Create the storage cluster with the following command:
 [Source,bash]
 ----
 kubectl create -f ./k8s/spring-storage-cluster.yaml
 ----
 
-==== Start the Student REST Service
+==== Start the Student REST Microservice
 
-The Coherence Operator will have create a K8s Service to expose the Extend proxy, this service will be
+The Student Microservice is not a Coherence cluster member application, it is an Extend client, so it is not managed by the
+Coherence Operator. It can be deployed into Kubernetes using any suitable method that Kubernetes has for running Spring Boot
+images. This example will use a Kubernetes `Deployment`.
+
+The Coherence Operator will have created a K8s Service to expose the Extend proxy, this service will be
 called `student-storage-extend`. The DNS name created in Kubernetes for this will
 be `student-storage-extend.<namespace>.svc` where `<namespace>` is the name of the namespace the storage cluster
 was created in. We can use this to set the `extend.host` System property when we run the REST service below.

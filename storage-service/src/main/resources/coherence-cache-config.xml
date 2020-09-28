@@ -33,6 +33,10 @@
                                     <param-type>java.lang.String</param-type>
                                     <param-value>{cache-name}</param-value>
                                 </init-param>
+                                <init-param>
+                                  <param-type>com.tangosol.net.BackingMapManagerContext</param-type>
+                                  <param-value>{manager-context}</param-value>
+                                </init-param>
                             </init-params>
                         </class-scheme>
                     </cachestore-scheme>
@@ -47,6 +51,7 @@
           <acceptor-config>
             <tcp-acceptor>
               <local-address>
+
                 <address system-property="coherence.extend.address">0.0.0.0</address>
                 <port system-property="coherence.extend.port">20000</port>
               </local-address>

@@ -4,6 +4,13 @@
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+   		<groupId>org.springframework.boot</groupId>
+   		<artifactId>spring-boot-starter-parent</artifactId>
+   		<version>2.3.3.RELEASE</version>
+   		<relativePath/>
+   	</parent>
+
     <groupId>org.example</groupId>
     <artifactId>storage-service</artifactId>
     <version>1.0.0-SNAPSHOT</version>
@@ -34,6 +41,12 @@
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
 
+        <!-- Spring Dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
         <!-- Coherence dependencies -->
         <dependency>
             <groupId>com.oracle.coherence.ce</groupId>
@@ -58,6 +71,7 @@
             <version>${version.lib.oracledb}</version>
         </dependency>
 
+        <!-- Tracing dependencies to enable the use of Jaeger or Zipkin -->
         <dependency>
             <groupId>io.opentracing</groupId>
             <artifactId>opentracing-api</artifactId>
@@ -112,6 +126,20 @@
 
     <build>
         <plugins>
+            <!-- Spring-Boot plugin used to build the Spring Boot application and Buildpacks image -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <image>
+                        <env>
+                            <!-- This application must use a Java 11 JVM -->
+                            <BP_JVM_VERSION>11.*</BP_JVM_VERSION>
+                        </env>
+                    </image>
+                </configuration>
+            </plugin>
+
             <!-- Surefire plugin to run unit tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -142,11 +170,9 @@
                 <configuration>
                     <reuseForks>false</reuseForks>
                     <systemProperties>
-                        <oracle.db.host>localhost</oracle.db.host>
-                        <oracle.db.port>31521</oracle.db.port>
-                        <oracle.db.sid>ORCLPDB1</oracle.db.sid>
-                        <oracle.db.user>College</oracle.db.user>
-                        <oracle.db.pwd>Coherence2020</oracle.db.pwd>
+                        <oracle.db.url>jdbc:oracle:thin:@localhost:1521/ORCLPDB1</oracle.db.url>
+                        <oracle.db.user>jonathan</oracle.db.user>
+                        <oracle.db.pwd>secret</oracle.db.pwd>
                     </systemProperties>
                 </configuration>
                 <dependencies>
@@ -163,52 +189,56 @@
                 </dependencies>
             </plugin>
 
-            <!-- JIB plugin to build the OCI image -->
-            <plugin>
-                <groupId>com.google.cloud.tools</groupId>
-                <artifactId>jib-maven-plugin</artifactId>
-                <version>${version.plugin.jib}</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>dockerBuild</goal>
-                        </goals>
-                        <phase>package</phase>
-                        <configuration>
-                            <from>
-                                <image>docker://gcr.io/distroless/java:11</image>
-                            </from>
-                            <to>
-                                <image>coherence-example-storage:${project.version}</image>
-                            </to>
-                            <container>
-                                <mainClass>com.tangosol.net.DefaultCacheServer</mainClass>
-                                <environment>
-                                    <!-- Jaeger tracing variables -->
-                                    <JAEGER_SAMPLER_TYPE>const</JAEGER_SAMPLER_TYPE>
-                                    <JAEGER_SAMPLER_PARAM>1</JAEGER_SAMPLER_PARAM>
-                                    <JAEGER_SERVICE_NAME>coherence</JAEGER_SERVICE_NAME>
-                                </environment>
-                                <jvmFlags>
-                                    <jvmFlag>-Dcoherence.log=jdk</jvmFlag>
-                                    <jvmFlag>-Dcoherence.metrics.http.enabled=true</jvmFlag>
-                                    <jvmFlag>-Dcoherence.metrics.http.port=9612</jvmFlag>
-                                    <jvmFlag>-Dcoherence.management.http=all</jvmFlag>
-                                    <jvmFlag>-Dcoherence.management.http.port=30000</jvmFlag>
-                                    <jvmFlag>-Dcoherence.extend.port=20000</jvmFlag>
-                                    <jvmFlag>-Dcoherence.ttl=0</jvmFlag>
-                                    <jvmFlag>-Dcoherence.tracing.ratio=1</jvmFlag>
-                                </jvmFlags>
-                                <ports>
-                                    <port>9612</port>
-                                    <port>30000</port>
-                                    <port>20000</port>
-                                </ports>
-                            </container>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+<!--            &lt;!&ndash; JIB plugin to build the OCI image &ndash;&gt;-->
+<!--            <plugin>-->
+<!--                <groupId>com.google.cloud.tools</groupId>-->
+<!--                <artifactId>jib-maven-plugin</artifactId>-->
+<!--                <version>${version.plugin.jib}</version>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <goals>-->
+<!--                            <goal>dockerBuild</goal>-->
+<!--                        </goals>-->
+<!--                        <phase>package</phase>-->
+<!--                        <configuration>-->
+<!--                            <from>-->
+<!--                                <image>docker://gcr.io/distroless/java:11</image>-->
+<!--                            </from>-->
+<!--                            <to>-->
+<!--                                <image>coherence-example-spring-storage:${project.version}</image>-->
+<!--                            </to>-->
+<!--                            <container>-->
+<!--                                <mainClass>com.oracle.coherence.examples.storage.StorageApplication</mainClass>-->
+<!--                                <environment>-->
+<!--                                    &lt;!&ndash; Setting the COH_MAIN_CLASS environment variable will make the Coherence K8s Operator use-->
+<!--                                         the correct main class without needing to specify it the class name in the Coherence-->
+<!--                                         resource yaml &ndash;&gt;-->
+<!--                                    <COH_MAIN_CLASS>com.oracle.coherence.examples.storage.StorageApplication</COH_MAIN_CLASS>-->
+<!--                                    &lt;!&ndash; Jaeger tracing variables &ndash;&gt;-->
+<!--                                    <JAEGER_SAMPLER_TYPE>const</JAEGER_SAMPLER_TYPE>-->
+<!--                                    <JAEGER_SAMPLER_PARAM>1</JAEGER_SAMPLER_PARAM>-->
+<!--                                    <JAEGER_SERVICE_NAME>coherence</JAEGER_SERVICE_NAME>-->
+<!--                                </environment>-->
+<!--                                <jvmFlags>-->
+<!--                                    <jvmFlag>-Dcoherence.log=jdk</jvmFlag>-->
+<!--                                    <jvmFlag>-Dcoherence.metrics.http.enabled=true</jvmFlag>-->
+<!--                                    <jvmFlag>-Dcoherence.metrics.http.port=9612</jvmFlag>-->
+<!--                                    <jvmFlag>-Dcoherence.management.http=all</jvmFlag>-->
+<!--                                    <jvmFlag>-Dcoherence.management.http.port=30000</jvmFlag>-->
+<!--                                    <jvmFlag>-Dcoherence.extend.port=20000</jvmFlag>-->
+<!--                                    <jvmFlag>-Dcoherence.ttl=0</jvmFlag>-->
+<!--                                    <jvmFlag>-Dcoherence.tracing.ratio=1</jvmFlag>-->
+<!--                                </jvmFlags>-->
+<!--                                <ports>-->
+<!--                                    <port>9612</port>-->
+<!--                                    <port>30000</port>-->
+<!--                                    <port>20000</port>-->
+<!--                                </ports>-->
+<!--                            </container>-->
+<!--                        </configuration>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
         </plugins>
     </build>
 </project>
