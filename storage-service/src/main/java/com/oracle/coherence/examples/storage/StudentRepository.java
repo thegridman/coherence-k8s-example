@@ -1,6 +1,7 @@
 package com.oracle.coherence.examples.storage;
 
 import com.oracle.coherence.examples.domain.Student;
+import com.oracle.coherence.examples.domain.StudentId;
 
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
@@ -11,7 +12,7 @@ import org.springframework.stereotype.Repository;
 /**
  * @author Jonathan Knight  2020.09.10
  */
-@Repository
+@Repository("students")
 public interface StudentRepository
-        extends CrudRepository<Student, String> {
+        extends CrudRepository<Student, StudentId> {
 }

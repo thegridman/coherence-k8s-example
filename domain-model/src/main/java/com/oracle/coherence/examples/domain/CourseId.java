@@ -8,32 +8,32 @@ import javax.persistence.Embeddable;
 import com.tangosol.io.pof.schema.annotation.Portable;
 import com.tangosol.io.pof.schema.annotation.PortableType;
 
-import static com.oracle.coherence.examples.domain.PofTypes.POF_TYPE_STUDENT_ID;
+import static com.oracle.coherence.examples.domain.PofTypes.POF_TYPE_COURSE;
 
 /**
- * @author Jonathan Knight  2020.09.09
+ * @author Jonathan Knight  2020.09.29
  */
 @Embeddable
-@PortableType(id = POF_TYPE_STUDENT_ID)
-public class StudentId
+@PortableType(id = POF_TYPE_COURSE)
+public class CourseId
         implements Serializable {
 
     @Portable
-    String roll;
+    private String classId;
 
-    public StudentId() {
+    public CourseId() {
     }
 
-    public StudentId(String roll) {
-        this.roll = roll;
+    public CourseId(String classId) {
+        this.classId = classId;
     }
 
-    public void setRoll(String roll) {
-        this.roll = roll;
+    public String getClassId() {
+        return classId;
     }
 
-    public String getRoll() {
-        return roll;
+    public void setClassId(String classId) {
+        this.classId = classId;
     }
 
     @Override
@@ -44,12 +44,12 @@ public class StudentId
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        StudentId studentId = (StudentId) o;
-        return Objects.equals(roll, studentId.roll);
+        CourseId courseId = (CourseId) o;
+        return Objects.equals(classId, courseId.classId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(roll);
+        return Objects.hash(classId);
     }
 }

@@ -21,6 +21,271 @@ to perform CRUD operations on Students. This application is a Coherence Extend c
 to the storage service.
 
 
+== Spring Boot CacheStore Implementation
+
+This example demonstrates how to write a Spring Boot `CacheStore` implementation. The `SpringJpaCacheStore` class is generic
+and takes any Spring `CrudRepository` as its constructor parameter. It then uses this to perform the required cache store
+operations.
+
+There is a Spring JPA repository class for `Student` named `StudentRepository`. This is just an interface that extends the
+Spring `CrudRepository`. There is no need to write any more code than this interface.
+
+[source,java]
+----
+@Repository("students")
+public interface StudentRepository
+        extends CrudRepository<Student, StudentId> {
+}
+----
+
+NOTE: The `StudentRepository` class has been annotated with `@Repository("students")` to make it a Spring bean with the name `students`.
+This name is important as it will be used by the `CacheStore` factory class to look up the bean in the Spring context.
+This example used the convention that the Coherence cache name will match the corresponding repository bean name.
+
+
+=== CacheStore Factory
+There is a factory class which will be used by Coherence to create `CacheStore` instances.
+The `CacheStoreFactory` class is generic, so no additional code will be needed if more entity classes get added
+to the project.
+The factory will look-up in the Spring context a `CrudRepository` bean with the same name as the cache which is being created.
+
+The Coherence cache configuration file configures the cache scheme to use the `CacheStoreFactory` to create `CacheStore`
+instances, as shown below.
+
+[source,xml]
+----
+<distributed-scheme>
+    <scheme-name>db-scheme</scheme-name>
+    <service-name>StorageService</service-name>
+    <backing-map-scheme>
+        <read-write-backing-map-scheme>
+            <internal-cache-scheme>
+                <local-scheme>
+                    <scheme-ref>unlimited-scheme</scheme-ref>
+                </local-scheme>
+            </internal-cache-scheme>
+            <cachestore-scheme>
+                <class-scheme>
+                    <class-factory-name>com.oracle.coherence.examples.storage.CacheStoreFactory</class-factory-name>
+                    <method-name>createCacheStore</method-name>
+                    <init-params>
+                        <init-param>
+                            <param-type>java.lang.String</param-type>
+                            <param-value>{cache-name}</param-value>
+                        </init-param>
+                        <init-param>
+                          <param-type>com.tangosol.net.BackingMapManagerContext</param-type>
+                          <param-value>{manager-context}</param-value>
+                        </init-param>
+                    </init-params>
+                </class-scheme>
+            </cachestore-scheme>
+        </read-write-backing-map-scheme>
+    </backing-map-scheme>
+    <autostart>true</autostart>
+</distributed-scheme>
+----
+
+=== Adding More Domain Classes & CacheStores
+
+To add more domain classes to the project all that needs to be implemented is the domain classes themselves, annotated with JPA
+and Coherence POF annotations and a corresponding repository class.
+
+For example, suppose we wanted to add a `Course` entity to our Student database, we create the `CourseId` and `Course` classes:
+
+[source,java]
+----
+@Embeddable
+@PortableType(id = 1003)
+public class CourseId
+        implements Serializable {
+
+    @Portable
+    private String classId;
+
+    public CourseId() {
+    }
+
+    public CourseId(String classId) {
+        this.classId = classId;
+    }
+
+    public String getClassId() {
+        return classId;
+    }
+
+    public void setClassId(String classId) {
+        this.classId = classId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CourseId courseId = (CourseId) o;
+        return Objects.equals(classId, courseId.classId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(classId);
+    }
+}
+----
+
+[source,java]
+----
+@Entity
+@PortableType(id = POF_TYPE_COURSE)
+public class Course {
+
+    @EmbeddedId
+    @Portable
+    private CourseId id;
+
+    @Portable
+    private String name;
+
+    public Course() {
+    }
+
+    public Course(CourseId id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public CourseId getId() {
+        return id;
+    }
+
+    public void setId(CourseId id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+----
+
+For the `CacheStore` to work all we need is a repository class for the `Course` entity like this:
+[source,java]
+----
+@Repository("courses")
+public interface CourseRepository
+        extends CrudRepository<Course, CourseId> {
+}
+----
+
+Now when a cache named `courses` is created the `CacheStoreFactory` will look up the repository bean named `courses` and use
+it to create the cache store.
+
+
+
+== Size Limiting the Caches
+
+The cache configuration does not contain any size limits.
+
+The distributed scheme for the caches is below.
+[source,xml]
+----
+<distributed-scheme>
+    <scheme-name>db-scheme</scheme-name>
+    <service-name>StorageService</service-name>
+    <backing-map-scheme>
+        <read-write-backing-map-scheme>
+            <internal-cache-scheme>
+                <local-scheme>
+                    <scheme-ref>storage-local-scheme</scheme-ref>
+                </local-scheme>
+            </internal-cache-scheme>
+            <cachestore-scheme>
+                <class-scheme>
+                    <class-factory-name>com.oracle.coherence.examples.storage.CacheStoreFactory</class-factory-name>
+                    <method-name>createCacheStore</method-name>
+                    <init-params>
+                        <init-param>
+                            <param-type>java.lang.String</param-type>
+                            <param-value>{cache-name}</param-value>
+                        </init-param>
+                        <init-param>
+                          <param-type>com.tangosol.net.BackingMapManagerContext</param-type>
+                          <param-value>{manager-context}</param-value>
+                        </init-param>
+                    </init-params>
+                </class-scheme>
+            </cachestore-scheme>
+        </read-write-backing-map-scheme>
+    </backing-map-scheme>
+    <autostart>true</autostart>
+</distributed-scheme>
+----
+
+In the scheme above in its `<internal-cache-scheme>` the `<local-scheme>` refers to a local-scheme named `storage-local-scheme`
+which is defined further down in the cache configuration file and looks like this:
+
+[source,xml]
+----
+<local-scheme>
+    <scheme-name>storage-local-scheme</scheme-name>
+</local-scheme>
+----
+
+The `storage-local-scheme` is a plain `local-scheme` with no other configuration, so it has no size limit or eviction policy.
+
+To set a size limit we can set the `high-units` like this:
+[source,xml]
+----
+<local-scheme>
+    <scheme-name>storage-local-scheme</scheme-name>
+    <high-units>1000</high-units>
+</local-scheme>
+----
+
+This means that the caches will be limited to 1000 entries each. When a cache reaches 1000 entries a number of entries will
+be evicted down to the `low-units` value. In the example above we have not set `low-units`, so the default is 80% of the high units.
+So in this case when the cache size reaches 1000 it will be reduced down to 800.
+
+You could set the `low-units` to a different value like this:
+[source,xml]
+----
+<local-scheme>
+    <scheme-name>storage-local-scheme</scheme-name>
+    <high-units>1000</high-units>
+    <low-units>500</low-units>
+</local-scheme>
+----
+
+Now when the cache reaches 1000 entries, 500 will be evicted.
+
+=== Size Limiting Using Size
+
+The `high-units` can be set as a bytes value by setting the `unit-calculator` value of the `local-scheme` to `BINARY`:
+
+[source,xml]
+----
+<local-scheme>
+    <scheme-name>storage-local-scheme</scheme-name>
+    <unit-calculator>BINARY</unit-calculator>
+    <high-units>10MB</high-units>
+    <low-units>5MB</low-units>
+</local-scheme>
+----
+
+Now the `high-units` is set to 10 mega-bytes, and the `low-units` is 5 mega-bytes. When the amount of data in the cache
+reaches 10MB, regardless of how many entries, then entries will be evicted until the size gets down to 5MB or less.
+
+There is lots of information on this in the Coherence documentation:
+https://docs.oracle.com/en/middleware/standalone/coherence/14.1.1.0/develop-applications/cache-configurations-example.html#GUID-3A02103F-0DBF-47B2-A940-9EDD928E45C5
+
 == Build the Examples
 
 The examples are Maven projects and should be build with the following commands in this order:

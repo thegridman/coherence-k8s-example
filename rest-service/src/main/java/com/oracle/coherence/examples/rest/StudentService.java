@@ -2,7 +2,6 @@ package com.oracle.coherence.examples.rest;
 
 import java.util.UUID;
 
-import com.oracle.coherence.examples.domain.Address;
 import com.oracle.coherence.examples.domain.Student;
 import com.oracle.coherence.examples.domain.StudentId;
 
@@ -42,7 +41,7 @@ public class StudentService {
      */
     public Student create(Student student) {
         String roll = UUID.randomUUID().toString();
-        student.setRollNumber(roll);
+        student.getId().setRoll(roll);
         getCache().put(new StudentId(roll), student);
         return student;
     }
@@ -59,7 +58,7 @@ public class StudentService {
      */
     public Student update(StudentId id, Student student) {
         // ensure that the Student roll number matches the Id.
-        student.setRollNumber(id.getRollNumber());
+        student.getId().setRoll(id.getRoll());
 
         Student cached = getCache().computeIfPresent(id, (k, v) -> student);
         if (cached == null) {

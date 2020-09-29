@@ -13,7 +13,7 @@ public class StudentNotFoundException
     extends RuntimeException {
 
     public StudentNotFoundException(StudentId id) {
-        this(id.getRollNumber());
+        this(id.getRoll());
     }
 
     public StudentNotFoundException(String id) {

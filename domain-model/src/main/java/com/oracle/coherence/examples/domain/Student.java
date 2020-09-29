@@ -1,12 +1,9 @@
 package com.oracle.coherence.examples.domain;
 
-import javax.persistence.Column;
+import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.MapsId;
+import javax.persistence.IdClass;
 import javax.persistence.OneToOne;
-import javax.persistence.Table;
 
 import com.tangosol.io.pof.schema.annotation.Portable;
 import com.tangosol.io.pof.schema.annotation.PortableType;
@@ -23,9 +20,9 @@ import static com.oracle.coherence.examples.domain.PofTypes.POF_TYPE_STUDENT;
 @PortableType(id = POF_TYPE_STUDENT)
 public class Student {
 
-    @Id
+    @EmbeddedId
     @Portable
-    private String roll;
+    private StudentId id;
 
     @Portable
     private String firstName;
@@ -49,11 +46,15 @@ public class Student {
 
     public Student(String rollNumber, String firstName, String lastName,
                    String className, Address address) {
-        this.roll = rollNumber;
+        this.id = new StudentId(rollNumber);
         this.firstName = firstName;
         this.lastName = lastName;
         this.className = className;
         setAddress(address);
+    }
+
+    public StudentId getId() {
+        return id;
     }
 
     public String getFirstName() {
@@ -73,14 +74,7 @@ public class Student {
     }
 
     public String getRollNumber() {
-        return roll;
-    }
-
-    public void setRollNumber(String roll) {
-        this.roll = roll;
-        if (address != null) {
-            address.setRoll(roll);
-        }
+        return id.roll;
     }
 
     public String getClassName() {
@@ -98,14 +92,14 @@ public class Student {
     public void setAddress(Address address) {
         this.address = address;
         if (this.address != null) {
-            this.address.setRoll(this.roll);
+            this.address.setRoll(this.id.getRoll());
         }
     }
 
     @Override
     public String toString() {
         return "Student{" +
-                "rollNumber='" + roll + '\'' +
+                "id='" + id + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", className='" + className + '\'' +

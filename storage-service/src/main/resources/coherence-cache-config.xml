@@ -22,7 +22,9 @@
             <backing-map-scheme>
                 <read-write-backing-map-scheme>
                     <internal-cache-scheme>
-                        <local-scheme/>
+                        <local-scheme>
+                            <scheme-ref>storage-local-scheme</scheme-ref>
+                        </local-scheme>
                     </internal-cache-scheme>
                     <cachestore-scheme>
                         <class-scheme>
@@ -44,6 +46,11 @@
             </backing-map-scheme>
             <autostart>true</autostart>
         </distributed-scheme>
+
+        <!-- A local scheme with no eviction or size limit -->
+        <local-scheme>
+            <scheme-name>storage-local-scheme</scheme-name>
+        </local-scheme>
 
         <!-- proxy scheme that allows extend clients to connect to the cluster over TCP/IP -->
         <proxy-scheme>

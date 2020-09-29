@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <student
+        ROLL="1234"
+        FIRST_NAME="Zaphod"
+        LAST_NAME="Beeblebrox"
+        CLASS_NAME="Astronomy"
+    />
+    <address/>
+</dataset>

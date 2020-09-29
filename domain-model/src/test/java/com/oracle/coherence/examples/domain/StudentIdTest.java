@@ -24,7 +24,7 @@ public class StudentIdTest {
         StudentId result = ExternalizableHelper.fromBinary(binary, serializer);
 
         assertThat(result, is(notNullValue()));
-        assertThat(result.getRollNumber(), is(id.getRollNumber()));
+        assertThat(result.getRoll(), is(id.getRoll()));
     }
 
     @Test
